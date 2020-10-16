@@ -87,13 +87,17 @@ public class SASTScanner extends AbstractASoCScanner {
 					FileSet fileSet = ArtifactHandlingUtils.createFileSet(workingDir, artifact, true, null);
 					for (Resource resource : fileSet) {
 						target = resource.getLocation().getFileName();
+						break;
 					}
+					if (target != null) break;
 				}
 			}
 			catch (IOException e) {
 			}
 		}
 		properties.put(CoreConstants.TARGET, Utility.resolvePath(target, taskContext));
+		if (taskContext.getConfigurationMap().getAsBoolean("")) properties.put(CoreConstants.OPEN_SOURCE_ONLY, "");
+
 		return properties;
 	}
 
