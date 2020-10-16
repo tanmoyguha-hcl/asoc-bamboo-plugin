@@ -6,64 +6,48 @@
 
 package com.hcl.appscan.bamboo.plugin.impl;
 
-import com.atlassian.bamboo.build.artifact.ArtifactHandlingUtils;
 import com.atlassian.bamboo.build.artifact.ArtifactManager;
-import com.atlassian.bamboo.plan.artifact.ArtifactDefinitionContext;
 import com.atlassian.bamboo.process.ProcessService;
 import com.atlassian.bamboo.task.TaskContext;
 import com.atlassian.bamboo.task.TaskException;
+import com.atlassian.core.util.FileUtils;
 import com.hcl.appscan.bamboo.plugin.auth.BambooAuthenticationProvider;
 import com.hcl.appscan.bamboo.plugin.util.ScanProgress;
-import com.hcl.appscan.bamboo.plugin.util.Utility;
 import com.hcl.appscan.sdk.CoreConstants;
 import com.hcl.appscan.sdk.logging.IProgress;
 import com.hcl.appscan.sdk.results.NonCompliantIssuesResultProvider;
 import com.hcl.appscan.sdk.scan.IScan;
+import com.hcl.appscan.sdk.scanners.dynamic.DASTConstants;
 import com.hcl.appscan.sdk.scanners.dynamic.DASTScanFactory;
-import com.hcl.appscan.sdk.scanners.sast.SASTConstants;
-import com.hcl.appscan.sdk.scanners.sast.SASTScanFactory;
-import com.hcl.appscan.sdk.utils.SystemUtil;
-import org.apache.tools.ant.types.FileSet;
-import com.atlassian.core.util.FileUtils;
-import org.apache.tools.ant.types.Resource;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
 import java.util.Map;
 
-public class SASTScanner extends AbstractASoCScanner {
+public class DASTScanner extends AbstractASoCScanner {
 	private ProcessService processService;
 	private BambooAuthenticationProvider authenticationProvider;
 	private String jobId;
 
-	public SASTScanner(LogHelper logger, ArtifactManager artifactManager, ProcessService processService) {
+	public DASTScanner(LogHelper logger, ArtifactManager artifactManager, ProcessService processService) {
 		super(logger, artifactManager);
 		this.processService = processService;
 	}
 
 	@Override
 	public String getScannerType() {
-		return SASTConstants.SAST;
-	}
-
-	private void setInstallDir() {
-		if (SystemUtil.isWindows() && System.getProperty("user.home").toLowerCase().indexOf("system32")>=0) {
-			System.setProperty(CoreConstants.SACLIENT_INSTALL_DIR, BAMBOO_APPSCAN_INSTALL_DIR.getPath());
-		}
+		return DASTConstants.DAST;
 	}
 
 	@Override
 	public void scheduleScan(TaskContext taskContext) throws TaskException {
-		logger.info("scan.schedule.static");
+		logger.info("scan.schedule.dynamic");
 		IProgress progress = new ScanProgress(logger);
 		authenticationProvider = new BambooAuthenticationProvider(username, password);
-		SASTScanFactory scanFactory = new SASTScanFactory();
+		DASTScanFactory scanFactory = new DASTScanFactory();
 
 		Map<String, String> scanProperties = getScanProperties(taskContext);
 		IScan scan = scanFactory.create(scanProperties, progress, authenticationProvider);
 		try {
-			setInstallDir();
 			scan.run();
 			jobId = scan.getScanId();
 			logger.info("scan.schedule.success", jobId);
@@ -79,21 +63,7 @@ public class SASTScanner extends AbstractASoCScanner {
 	@Override
 	protected Map<String, String> getScanProperties(TaskContext taskContext) {
 		Map<String, String> properties = super.getScanProperties(taskContext);
-		String target = taskContext.getConfigurationMap().get(CoreConstants.TARGET);
-		if (target == null || target.trim().isEmpty()) {
-			Collection<ArtifactDefinitionContext> artifacts = taskContext.getBuildContext().getArtifactContext().getDefinitionContexts();
-			try {
-				for (ArtifactDefinitionContext artifact : artifacts) {
-					FileSet fileSet = ArtifactHandlingUtils.createFileSet(workingDir, artifact, true, null);
-					for (Resource resource : fileSet) {
-						target = resource.getLocation().getFileName();
-					}
-				}
-			}
-			catch (IOException e) {
-			}
-		}
-		properties.put(CoreConstants.TARGET, Utility.resolvePath(target, taskContext));
+		properties.put(CoreConstants.TARGET, taskContext.getConfigurationMap().get(CoreConstants.TARGET));
 		return properties;
 	}
 
@@ -105,23 +75,12 @@ public class SASTScanner extends AbstractASoCScanner {
 		if (dirToScan.exists())
 			FileUtils.deleteDir(dirToScan);
 
-		dirToScan.mkdirs();
-
-		Collection<ArtifactDefinitionContext> artifacts = taskContext.getBuildContext().getArtifactContext().getDefinitionContexts();
-
-		if (artifacts.isEmpty())
-			throw new TaskException(logger.getText("err.no.artifacts")); //$NON-NLS-1$
-
 		try {
-			for (ArtifactDefinitionContext artifact : artifacts) {
-				logger.info("copy.artifact", artifact.getName(), dirToScan); //$NON-NLS-1$
-				FileSet fileSet = ArtifactHandlingUtils.createFileSet(workingDir, artifact, true, null);
-				ArtifactHandlingUtils.copyFileSet(fileSet, dirToScan);
-			}
-			return dirToScan;
+			dirToScan.mkdirs();
+		} catch (Exception e) {
+			logger.error("err.working.dir.creation", e.getLocalizedMessage());
 		}
-		catch (IOException e) {
-			throw new TaskException(e.getLocalizedMessage(), e);
-		}
+
+		return dirToScan;
 	}
 }

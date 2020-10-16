@@ -39,7 +39,7 @@ public class SASTScanTask implements TaskType, ISASTConstants, IArtifactPublishe
 	private static final String SA_DIR 	= ".sa"; //$NON-NLS-1$
 	
 	private LogHelper logger;
-	private SASTScanner scanner;
+	private SASTScanner_1 scanner;
 	
 	private ArtifactManager artifactManager;
 	private CredentialsManager credentialsManager;
@@ -53,7 +53,7 @@ public class SASTScanTask implements TaskType, ISASTConstants, IArtifactPublishe
 			@ComponentImport CapabilityContext capabilityContext) {
 		
 		logger = new LogHelper(i18nBeanFactory.getI18nBean());
-		scanner = new SASTScanner(logger, processService);
+		scanner = new SASTScanner_1(logger, processService);
 		
 		this.artifactManager = artifactManager;
 		this.credentialsManager = credentialsManager;
@@ -180,6 +180,8 @@ public class SASTScanTask implements TaskType, ISASTConstants, IArtifactPublishe
 		
 		scanner.generateIRX(taskContext, this);
 		scanner.submitIRX(taskContext);
+
+        scanner.scheduleDynamicScan(taskContext);
 		
 		TaskResultBuilder result = TaskResultBuilder.newBuilder(taskContext);		
 		

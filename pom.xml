@@ -68,6 +68,12 @@ LICENSE: Apache License, Version 2.0 https://www.apache.org/licenses/LICENSE-2.0
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.hcl</groupId>
+            <artifactId>appscan.sdk</artifactId>
+            <version>1.0.17</version>
+        </dependency>
+
         <!-- WIRED TEST RUNNER DEPENDENCIES -->
         <!-- dependency>
             <groupId>com.atlassian.plugins</groupId>

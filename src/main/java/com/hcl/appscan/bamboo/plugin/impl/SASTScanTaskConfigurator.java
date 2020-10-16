@@ -11,6 +11,10 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.Set;
 
+import com.hcl.appscan.bamboo.plugin.util.Utility;
+import com.hcl.appscan.sdk.CoreConstants;
+import com.hcl.appscan.sdk.scanners.dynamic.DASTConstants;
+import com.hcl.appscan.sdk.scanners.sast.SASTConstants;
 import org.apache.commons.lang3.StringUtils;
 
 import com.atlassian.bamboo.collections.ActionParametersMap;
@@ -31,16 +35,18 @@ import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
 @Scanned
 public class SASTScanTaskConfigurator extends AbstractTaskConfigurator implements TaskRequirementSupport, ISASTConstants {
 	
-	private static final String UTIL_LIST = "utilList";	//$NON-NLS-1$
 	private static final String CRED_LIST = "credList";	//$NON-NLS-1$
-	
+	private static final String SCAN_TYPE = "scanType";	//$NON-NLS-1$
+	private static final String SCAN_OPTIONS_LIST = "scanOptionList";	//$NON-NLS-1$
+	private static final String TEST_OPTIMIZATION_LIST = "testOptimizationList";	//$NON-NLS-1$
+
 	private UIConfigSupport uiConfigSupport;
 	private CredentialsManager credentialsManager;
 	private I18nBean i18nBean;
 	
 	public SASTScanTaskConfigurator(
-			@ComponentImport UIConfigSupport uiConfigSupport, 
-			@ComponentImport CredentialsManager credentialsManager, 
+			@ComponentImport UIConfigSupport uiConfigSupport,
+			@ComponentImport CredentialsManager credentialsManager,
 			@ComponentImport I18nBeanFactory i18nBeanFactory) {
 		
 		this.uiConfigSupport = uiConfigSupport;
@@ -54,20 +60,26 @@ public class SASTScanTaskConfigurator extends AbstractTaskConfigurator implement
 			credentials.put(data.getId(), data.getName());
 		return credentials;
 	}
-	
+
 	@Override
 	public void populateContextForCreate(Map<String, Object> context) {
-		context.put(UTIL_LIST, uiConfigSupport.getExecutableLabels(SA_CLIENT_UTIL_KEY));
 		context.put(CRED_LIST, getCredentials());
+		context.put(SCAN_TYPE, Utility.getScanTypes());
+		context.put(SCAN_OPTIONS_LIST, Utility.getScanOptions());
+		context.put(TEST_OPTIMIZATION_LIST, Utility.getTestOptimizations());
 	}
 	
 	@Override
 	public void populateContextForEdit(Map<String, Object> context, TaskDefinition taskDefinition) {
-		context.put(UTIL_LIST, uiConfigSupport.getExecutableLabels(SA_CLIENT_UTIL_KEY));
 		context.put(CRED_LIST, getCredentials());
+		context.put(SCAN_TYPE, Utility.getScanTypes());
+		context.put(SCAN_OPTIONS_LIST, Utility.getScanOptions());
+		context.put(TEST_OPTIMIZATION_LIST, Utility.getTestOptimizations());
 		Map<String, String> config = taskDefinition.getConfiguration();
 		context.put(CFG_SELECTED_UTIL, config.get(CFG_SELECTED_UTIL));
 		context.put(CFG_SELECTED_CRED, config.get(CFG_SELECTED_CRED));
+		context.put(CFG_SEL_SCAN_TYPE, config.get(CFG_SEL_SCAN_TYPE));
+		context.put(CoreConstants.TARGET, config.get(CoreConstants.TARGET));
 		context.put(CFG_APP_ID, config.get(CFG_APP_ID));
 		context.put(CFG_SUSPEND, Boolean.valueOf(config.get(CFG_SUSPEND)));
 		context.put(CFG_MAX_HIGH, config.get(CFG_MAX_HIGH));
@@ -92,6 +104,10 @@ public class SASTScanTaskConfigurator extends AbstractTaskConfigurator implement
 		validateRequired(params, errorCollection, CFG_SELECTED_UTIL);
 		validateRequired(params, errorCollection, CFG_SELECTED_CRED);
 		validateRequired(params, errorCollection, CFG_APP_ID);
+		validateRequired(params, errorCollection, CFG_SEL_SCAN_TYPE);
+		if (params.getString(CFG_SEL_SCAN_TYPE) != null && DASTConstants.DYNAMIC_ANALYZER.equals(params.getString(CFG_SEL_SCAN_TYPE))) {
+			validateRequired(params, errorCollection, CoreConstants.TARGET);
+		}
 		validateNumber(params, errorCollection, CFG_MAX_HIGH);
 		validateNumber(params, errorCollection, CFG_MAX_MEDIUM);
 		validateNumber(params, errorCollection, CFG_MAX_LOW);
@@ -102,6 +118,8 @@ public class SASTScanTaskConfigurator extends AbstractTaskConfigurator implement
 		Map<String, String> config = super.generateTaskConfigMap(params, previousTaskDefinition);
 		config.put(CFG_SELECTED_UTIL, params.getString(CFG_SELECTED_UTIL));
 		config.put(CFG_SELECTED_CRED, params.getString(CFG_SELECTED_CRED));
+		config.put(CFG_SEL_SCAN_TYPE, params.getString(CFG_SEL_SCAN_TYPE));
+		config.put(CoreConstants.TARGET, params.getString(CoreConstants.TARGET));
 		config.put(CFG_APP_ID, params.getString(CFG_APP_ID));
 		config.put(CFG_SUSPEND, Boolean.toString(params.getBoolean(CFG_SUSPEND)));
 		config.put(CFG_MAX_HIGH, params.getString(CFG_MAX_HIGH));
